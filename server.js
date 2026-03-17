@@ -60,10 +60,14 @@ app.post("/upload-media", upload.single("file"), async (req, res) => {
     const { token, phone_id } = req.body;
 
     const form = new FormData();
-    form.append("file", fs.createReadStream(req.file.path));
-    form.append("type", "image/jpeg");
-    form.append("messaging_product", "whatsapp");
 
+form.append("file", fs.createReadStream(req.file.path), {
+  filename: req.file.originalname,
+  contentType: req.file.mimetype
+});
+
+form.append("messaging_product", "whatsapp");
+     
     const r = await fetch(
       `https://graph.facebook.com/v18.0/${phone_id}/media`,
       {
