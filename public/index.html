@@ -1,12 +1,11 @@
-
 <!DOCTYPE html>
 <html>
 <body>
 
 <h2>🔥 WhatsApp PRO SaaS Tool</h2>
 
-<input id="token" placeholder="Token"><br><br>
-<input id="phone_id" placeholder="Phone ID"><br><br>
+<input id="token" placeholder="Access Token"><br><br>
+<input id="phone_id" placeholder="Phone Number ID"><br><br>
 <input id="waba" placeholder="WABA ID"><br><br>
 
 <button onclick="loadTemplates()">📥 Load Templates</button><br><br>
@@ -14,7 +13,6 @@
 <select id="template"></select><br><br>
 
 <input type="file" id="csv"><br><br>
-<input type="file" id="image"><br><br>
 
 <button onclick="start()">🚀 Start Campaign</button>
 
@@ -24,44 +22,63 @@
 
 let failed = [];
 
-function log(t){ document.getElementById("log").innerHTML += t+"\n"; }
+function log(t){
+  document.getElementById("log").innerHTML += t + "\\n";
+}
 
+function tokenEl(){ return document.getElementById("token"); }
+function phoneEl(){ return document.getElementById("phone_id"); }
+function templateEl(){ return document.getElementById("template"); }
+function wabaEl(){ return document.getElementById("waba"); }
+
+// ✅ Load Templates
 async function loadTemplates(){
   const token = tokenEl().value;
   const waba = wabaEl().value;
+
   const r = await fetch(`/templates?token=${token}&waba=${waba}`);
   const d = await r.json();
 
+  templateEl().innerHTML = "";
+
+  if(!d.data){
+    log("❌ Template fetch failed");
+    return;
+  }
+
   d.data.forEach(t=>{
-    let o=document.createElement("option");
-    o.value=t.name; o.text=t.name;
+    let o = document.createElement("option");
+    o.value = t.name;
+    o.text = t.name;
     templateEl().appendChild(o);
   });
+
+  log("✅ Templates loaded");
 }
 
-function tokenEl(){return document.getElementById("token")}
-function phoneEl(){return document.getElementById("phone_id")}
-function templateEl(){return document.getElementById("template")}
-function wabaEl(){return document.getElementById("waba")}
-
-function parseCSV(t){
-  return t.split("\n").slice(1).map(x=>({phone:x.trim()}));
+// ✅ CSV Parse (clean)
+function parseCSV(text){
+  return text.split("\\n")
+    .slice(1)
+    .filter(x => x.trim() !== "")
+    .map(x => ({ phone: x.trim() }));
 }
 
+// ✅ Send Message
 async function send(row){
   const payload = {
-    messaging_product:"whatsapp",
+    messaging_product: "whatsapp",
     to: row.phone,
-    type:"template",
-    template:{
+    type: "template",
+    template: {
       name: templateEl().value,
-      language:{code:"mr"}
+      language: { code: "mr" }
     }
   };
 
-  const r = await fetch("/send",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
+  const res = await fetch("/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       token: tokenEl().value,
       phone_id: phoneEl().value,
@@ -69,27 +86,43 @@ async function send(row){
     })
   });
 
-  const d = await r.json();
+  const d = await res.json();
 
-  if(d.error){
-    log("❌ "+row.phone);
+  // 🔥 FINAL ERROR HANDLING
+  if(d.status === "error"){
+    log("❌ " + row.phone + " → " + d.message);
     failed.push(row.phone);
+  } else if(d.status === "success"){
+    log("✅ " + row.phone);
   } else {
-    log("✅ "+row.phone);
+    log("❌ " + row.phone + " → Unknown error");
+    failed.push(row.phone);
   }
 }
 
+// ✅ Start Campaign
 async function start(){
+  failed = [];
+
   const file = document.getElementById("csv").files[0];
+
+  if(!file){
+    log("❌ CSV file upload kar");
+    return;
+  }
+
   const text = await file.text();
   const data = parseCSV(text);
 
-  for(let r of data){
-    await send(r);
+  log("🚀 Sending started...");
+
+  for(let row of data){
+    await send(row);
+    await new Promise(r => setTimeout(r, 300)); // delay
   }
 
   log("🔥 Done");
-  log("Failed: "+failed.length);
+  log("❌ Failed: " + failed.length);
 }
 
 </script>
