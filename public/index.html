@@ -23,7 +23,7 @@
 let failed = [];
 
 function log(t){
-  document.getElementById("log").innerHTML += t + "\\n";
+  document.getElementById("log").innerHTML += t + "\n";
 }
 
 function tokenEl(){ return document.getElementById("token"); }
@@ -33,69 +33,88 @@ function wabaEl(){ return document.getElementById("waba"); }
 
 // ✅ Load Templates
 async function loadTemplates(){
-  const token = tokenEl().value;
-  const waba = wabaEl().value;
+  try{
+    const token = tokenEl().value;
+    const waba = wabaEl().value;
 
-  const r = await fetch(`/templates?token=${token}&waba=${waba}`);
-  const d = await r.json();
+    const r = await fetch(`/templates?token=${token}&waba=${waba}`);
+    const d = await r.json();
 
-  templateEl().innerHTML = "";
+    templateEl().innerHTML = "";
 
-  if(!d.data){
-    log("❌ Template fetch failed");
-    return;
+    if(!d.data){
+      log("❌ Template fetch failed");
+      console.log("TEMPLATE ERROR:", d);
+      return;
+    }
+
+    d.data.forEach(t=>{
+      let o = document.createElement("option");
+      o.value = t.name;
+      o.text = t.name;
+      templateEl().appendChild(o);
+    });
+
+    log("✅ Templates loaded");
+
+  }catch(e){
+    log("❌ Template fetch crash");
+    console.log(e);
   }
-
-  d.data.forEach(t=>{
-    let o = document.createElement("option");
-    o.value = t.name;
-    o.text = t.name;
-    templateEl().appendChild(o);
-  });
-
-  log("✅ Templates loaded");
 }
 
-// ✅ CSV Parse (clean)
+// ✅ CSV Parse
 function parseCSV(text){
-  return text.split("\\n")
+  return text.split("\n")
     .slice(1)
     .filter(x => x.trim() !== "")
     .map(x => ({ phone: x.trim() }));
 }
 
-// ✅ Send Message
+// ✅ Send Message (FIXED 🔥)
 async function send(row){
-  const payload = {
-    messaging_product: "whatsapp",
-    to: row.phone,
-    type: "template",
-    template: {
-      name: templateEl().value,
-      language: { code: "mr" }
+  try{
+    const payload = {
+      messaging_product: "whatsapp",
+      to: row.phone,
+      type: "template",
+      template: {
+        name: templateEl().value,
+        language: { code: "mr" }
+      }
+    };
+
+    const res = await fetch("/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: tokenEl().value,
+        phone_id: phoneEl().value,
+        payload
+      })
+    });
+
+    const d = await res.json();
+
+    // 🔥 DEBUG
+    console.log("RESPONSE:", d);
+
+    // 🔥 FIXED LOGIC
+    if(d.status === "error"){
+      log("❌ " + row.phone + " → " + d.message);
+      failed.push(row.phone);
     }
-  };
+    else if(d.status === "success" || d.messages){
+      log("✅ " + row.phone);
+    }
+    else{
+      log("❌ " + row.phone + " → Unknown error");
+      failed.push(row.phone);
+    }
 
-  const res = await fetch("/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      token: tokenEl().value,
-      phone_id: phoneEl().value,
-      payload
-    })
-  });
-
-  const d = await res.json();
-
-  // 🔥 FINAL ERROR HANDLING
-  if(d.status === "error"){
-    log("❌ " + row.phone + " → " + d.message);
-    failed.push(row.phone);
-  } else if(d.status === "success"){
-    log("✅ " + row.phone);
-  } else {
-    log("❌ " + row.phone + " → Unknown error");
+  }catch(e){
+    log("❌ " + row.phone + " → Crash");
+    console.log("SEND ERROR:", e);
     failed.push(row.phone);
   }
 }
@@ -115,10 +134,11 @@ async function start(){
   const data = parseCSV(text);
 
   log("🚀 Sending started...");
+  log("📊 Total: " + data.length);
 
   for(let row of data){
     await send(row);
-    await new Promise(r => setTimeout(r, 300)); // delay
+    await new Promise(r => setTimeout(r, 300));
   }
 
   log("🔥 Done");
