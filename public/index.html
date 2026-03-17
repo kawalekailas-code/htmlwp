@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>🔥 WhatsApp PRO SaaS Tool</h2>
+
+<input id="token" placeholder="Token"><br><br>
+<input id="phone_id" placeholder="Phone ID"><br><br>
+<input id="waba" placeholder="WABA ID"><br><br>
+
+<button onclick="loadTemplates()">📥 Load Templates</button><br><br>
+
+<select id="template"></select><br><br>
+
+<input type="file" id="csv"><br><br>
+<input type="file" id="image"><br><br>
+
+<button onclick="start()">🚀 Start Campaign</button>
+
+<pre id="log"></pre>
+
+<script>
+
+let failed = [];
+
+function log(t){ document.getElementById("log").innerHTML += t+"\n"; }
+
+async function loadTemplates(){
+  const token = tokenEl().value;
+  const waba = wabaEl().value;
+  const r = await fetch(`/templates?token=${token}&waba=${waba}`);
+  const d = await r.json();
+
+  d.data.forEach(t=>{
+    let o=document.createElement("option");
+    o.value=t.name; o.text=t.name;
+    templateEl().appendChild(o);
+  });
+}
+
+function tokenEl(){return document.getElementById("token")}
+function phoneEl(){return document.getElementById("phone_id")}
+function templateEl(){return document.getElementById("template")}
+function wabaEl(){return document.getElementById("waba")}
+
+function parseCSV(t){
+  return t.split("\n").slice(1).map(x=>({phone:x.trim()}));
+}
+
+async function send(row){
+  const payload = {
+    messaging_product:"whatsapp",
+    to: row.phone,
+    type:"template",
+    template:{
+      name: templateEl().value,
+      language:{code:"mr"}
+    }
+  };
+
+  const r = await fetch("/send",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      token: tokenEl().value,
+      phone_id: phoneEl().value,
+      payload
+    })
+  });
+
+  const d = await r.json();
+
+  if(d.error){
+    log("❌ "+row.phone);
+    failed.push(row.phone);
+  } else {
+    log("✅ "+row.phone);
+  }
+}
+
+async function start(){
+  const file = document.getElementById("csv").files[0];
+  const text = await file.text();
+  const data = parseCSV(text);
+
+  for(let r of data){
+    await send(r);
+  }
+
+  log("🔥 Done");
+  log("Failed: "+failed.length);
+}
+
+</script>
+
+</body>
+</html>
