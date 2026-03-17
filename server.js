@@ -1,0 +1,69 @@
+const express = require("express");
+const fetch = require("node-fetch");
+const multer = require("multer");
+const FormData = require("form-data");
+const fs = require("fs");
+
+const app = express();
+const upload = multer({ dest: "uploads/" });
+
+app.use(express.json());
+app.use(express.static("public"));
+
+app.get("/templates", async (req, res) => {
+  const { token, waba } = req.query;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v18.0/${waba}/message_templates`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.json({ error: { message: e.message } });
+  }
+});
+
+app.post("/upload-media", upload.single("file"), async (req, res) => {
+  try {
+    const { token, phone_id } = req.body;
+    const form = new FormData();
+    form.append("file", fs.createReadStream(req.file.path));
+    form.append("type", "image/jpeg");
+    form.append("messaging_product", "whatsapp");
+
+    const r = await fetch(`https://graph.facebook.com/v18.0/${phone_id}/media`, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, ...form.getHeaders() },
+      body: form
+    });
+
+    const data = await r.json();
+    fs.unlinkSync(req.file.path);
+
+    if (data.error) return res.json({ status: "error", message: data.error.message });
+    res.json({ status: "success", id: data.id });
+
+  } catch (e) {
+    res.json({ status: "error", message: e.message });
+  }
+});
+
+app.post("/send", async (req, res) => {
+  const { token, phone_id, payload } = req.body;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v18.0/${phone_id}/messages`, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await r.json();
+    if (data.error) return res.json({ status: "error", message: data.error.message });
+    res.json({ status: "success" });
+
+  } catch (e) {
+    res.json({ status: "error", message: e.message });
+  }
+});
+
+app.listen(3000, () => console.log("Server running"));
