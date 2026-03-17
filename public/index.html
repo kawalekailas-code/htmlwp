@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>🔥 WhatsApp PRO SaaS Tool (Image)</h2>
+
+<input id="token" placeholder="Access Token"><br><br>
+<input id="phone_id" placeholder="Phone Number ID"><br><br>
+<input id="waba" placeholder="WABA ID"><br><br>
+
+<button onclick="loadTemplates()">📥 Load Templates</button><br><br>
+
+<select id="template"></select><br><br>
+
+<label>Upload Image:</label><br>
+<input type="file" id="image"><br><br>
+
+<label>Upload CSV:</label><br>
+<input type="file" id="csv"><br><br>
+
+<button onclick="start()">🚀 Start Campaign</button>
+
+<pre id="log"></pre>
+
+<script>
+
+let failed = [];
+let mediaIdGlobal = null;
+
+function log(t){
+  document.getElementById("log").innerHTML += t + "\\n";
+}
+
+function tokenEl(){ return document.getElementById("token"); }
+function phoneEl(){ return document.getElement
