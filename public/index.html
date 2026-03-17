@@ -72,10 +72,13 @@ async function loadTemplates(){
 
 // CSV parse
 function parseCSV(text){
-  return text.split("\\n")
+  return text
+    .replace(/\r/g, "") // Windows fix
+    .split("\n")
     .slice(1)
-    .filter(x => x.trim() !== "")
-    .map(x => ({ phone: x.trim() }));
+    .map(x => x.trim())
+    .filter(x => x !== "")
+    .map(x => ({ phone: x }));
 }
 
 // Upload image
