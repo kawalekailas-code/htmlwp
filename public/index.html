@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>🚀 WhatsApp Bulk Sender (Online)</h2>
+
+<input id="token" placeholder="Access Token"><br><br>
+<input id="phone_id" placeholder="Phone ID"><br><br>
+<input id="template" placeholder="Template Name"><br><br>
+
+<input type="file" id="csvFile"><br><br>
+
+<button onclick="start()">🔥 Send</button>
+
+<pre id="log"></pre>
+
+<script>
+
+function log(msg){
+  document.getElementById("log").innerHTML += msg + "\n";
+}
+
+function parseCSV(text){
+  const rows = text.split("\n");
+  return rows.slice(1).map(r => {
+    return { phone: r.trim() };
+  });
+}
+
+async function send(row){
+  const token = document.getElementById("token").value;
+  const phone_id = document.getElementById("phone_id").value;
+  const template = document.getElementById("template").value;
+
+  const payload = {
+    messaging_product:"whatsapp",
+    to: row.phone,
+    type:"template",
+    template:{
+      name: template,
+      language:{ code:"mr" }
+    }
+  };
+
+  const res = await fetch("/send", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ token, phone_id, payload })
+  });
+
+  const data = await res.json();
+
+  if(data.error){
+    log("❌ "+row.phone+" → "+data.error.message);
+  } else {
+    log("✅ "+row.phone);
+  }
+}
+
+async function start(){
+  const file = document.getElementById("csvFile").files[0];
+  const text = await file.text();
+  const data = parseCSV(text);
+
+  for(let row of data){
+    await send(row);
+  }
+
+  log("🔥 Done");
+}
+
+</script>
+
+</body>
+</html>
