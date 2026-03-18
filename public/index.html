@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WhatsApp PRO SaaS Tool</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+    }
+
+    button {
+      background: #25D366;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin: 10px 0;
+    }
+
+    .box {
+      flex: 1;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .success { background: #e6ffed; }
+    .failed { background: #ffe6e6; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 8px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🔥 WhatsApp PRO SaaS Tool</h2>
+
+<input placeholder="Access Token">
+<input placeholder="Phone Number ID">
+<input placeholder="WABA ID">
+
+<button onclick="loadTemplates()">Load Templates</button>
+
+<select>
+  <option>Select Template</option>
+</select>
+
+<input type="file">
+<input type="file">
+
+<button onclick="startSending()">🚀 Start Campaign</button>
+
+<h3>📊 Bulk Dashboard</h3>
+
+<div class="stats">
+  <div class="box success">
+    ✅ Success: <span id="successCount">0</span>
+  </div>
+  <div class="box failed">
+    ❌ Failed: <span id="failCount">0</span>
+  </div>
+</div>
+
+<div style="max-height:250px;overflow:auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody id="errorTable"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+let successCount = 0;
+let failCount = 0;
+
+function updateStats() {
+  document.getElementById('successCount').innerText = successCount;
+  document.getElementById('failCount').innerText = failCount;
+}
+
+function addSuccess() {
+  successCount++;
+  updateStats();
+}
+
+function addError(message) {
+  failCount++;
+  updateStats();
+
+  const table = document.getElementById('errorTable');
+
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td style="word-break:break-word;max-width:250px;color:red;">
+      ${message}
+    </td>
+  `;
+
+  table.prepend(row);
+
+  if (table.children.length > 50) {
+    table.removeChild(table.lastChild);
+  }
+}
+
+// DEMO SEND (replace with your API)
+async function startSending() {
+  for (let i = 0; i < 100; i++) {
+    try {
+      const res = await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: "9999999999" })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        addSuccess();
+      } else {
+        addError(data.error || "Send failed");
+      }
+
+    } catch (err) {
+      addError(err.message);
+    }
+  }
+}
+</script>
+
+
+<script>
+async function loadTemplates() {
+  const inputs = document.querySelectorAll("input");
+  const token = inputs[0].value;
+  const waba = inputs[2].value;
+
+  if (!token || !waba) {
+    alert("Token & WABA ID required");
+    return;
+  }
+
+  const res = await fetch(`/templates?token=${token}&waba=${waba}`);
+  const data = await res.json();
+
+  const select = document.querySelector("select");
+  select.innerHTML = "";
+
+  if (data.status === "error") {
+    addError(data.message);
+    return;
+  }
+
+  data.data.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t.name;
+    opt.innerText = t.name;
+    select.appendChild(opt);
+  });
+}
+</script>
+
+</body>
+</html>
