@@ -1,210 +1,169 @@
 <!DOCTYPE html>
 <html>
+<head>
+  <title>WhatsApp PRO SaaS Tool</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+    }
+
+    button {
+      background: #25D366;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin: 10px 0;
+    }
+
+    .box {
+      flex: 1;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .success { background: #e6ffed; }
+    .failed { background: #ffe6e6; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 8px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+
 <body>
 
-<h2>🔥 WhatsApp PRO SaaS Tool (Image)</h2>
+<div class="container">
 
-<input id="token" placeholder="Access Token"><br><br>
-<input id="phone_id" placeholder="Phone Number ID"><br><br>
-<input id="waba" placeholder="WABA ID"><br><br>
+<h2>🔥 WhatsApp PRO SaaS Tool</h2>
 
-<button onclick="loadTemplates()">📥 Load Templates</button><br><br>
+<input placeholder="Access Token">
+<input placeholder="Phone Number ID">
+<input placeholder="WABA ID">
 
-<select id="template"></select><br><br>
+<button>Load Templates</button>
 
-<label>Upload Image:</label><br>
-<input type="file" id="image"><br><br>
+<select>
+  <option>Select Template</option>
+</select>
 
-<label>Upload CSV:</label><br>
-<input type="file" id="csv"><br><br>
+<input type="file">
+<input type="file">
 
-<button onclick="start()">🚀 Start Campaign</button>
+<button onclick="startSending()">🚀 Start Campaign</button>
 
-<pre id="log"></pre>
+<h3>📊 Bulk Dashboard</h3>
+
+<div class="stats">
+  <div class="box success">
+    ✅ Success: <span id="successCount">0</span>
+  </div>
+  <div class="box failed">
+    ❌ Failed: <span id="failCount">0</span>
+  </div>
+</div>
+
+<div style="max-height:250px;overflow:auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody id="errorTable"></tbody>
+  </table>
+</div>
+
+</div>
 
 <script>
+let successCount = 0;
+let failCount = 0;
 
-let failed = [];
-let mediaIdGlobal = null;
-
-function log(t){
-  document.getElementById("log").innerHTML += t + "\\n";
+function updateStats() {
+  document.getElementById('successCount').innerText = successCount;
+  document.getElementById('failCount').innerText = failCount;
 }
 
-function tokenEl(){ return document.getElementById("token"); }
-function phoneEl(){ return document.getElementById("phone_id"); }
-function templateEl(){ return document.getElementById("template"); }
-function wabaEl(){ return document.getElementById("waba"); }
+function addSuccess() {
+  successCount++;
+  updateStats();
+}
 
-// 🔥 FIXED TEMPLATE FETCH
-async function loadTemplates(){
-  try{
-    const res = await fetch(`/templates?token=${tokenEl().value}&waba=${wabaEl().value}`);
-    const d = await res.json();
+function addError(message) {
+  failCount++;
+  updateStats();
 
-    console.log("TEMPLATE:", d);
+  const table = document.getElementById('errorTable');
 
-    templateEl().innerHTML = "";
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td style="word-break:break-word;max-width:250px;color:red;">
+      ${message}
+    </td>
+  `;
 
-    if(d.status === "error"){
-      log("❌ " + d.message);
-      return;
-    }
+  table.prepend(row);
 
-    if(!d.data || d.data.length === 0){
-      log("❌ No templates found");
-      return;
-    }
-
-    d.data.forEach(t=>{
-      let o = document.createElement("option");
-      o.value = t.name;
-      o.text = t.name;
-      templateEl().appendChild(o);
-    });
-
-    log("✅ Templates loaded");
-
-  }catch(e){
-    log("❌ Template fetch crash");
+  if (table.children.length > 50) {
+    table.removeChild(table.lastChild);
   }
 }
 
-// CSV parse
-function parseCSV(text){
-  return text
-    .replace(/\r/g, "") // Windows fix
-    .split("\n")
-    .slice(1)
-    .map(x => x.trim())
-    .filter(x => x !== "")
-    .map(x => ({ phone: x }));
-}
+// DEMO SEND (replace with your API)
+async function startSending() {
+  for (let i = 0; i < 100; i++) {
+    try {
+      const res = await fetch('/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: "9999999999" })
+      });
 
-// Upload image
-async function uploadImage(){
-  const file = document.getElementById("image").files[0];
+      const data = await res.json();
 
-  if(!file){
-    log("❌ Image required");
-    return null;
-  }
-
-  const form = new FormData();
-  form.append("file", file);
-  form.append("token", tokenEl().value);
-  form.append("phone_id", phoneEl().value);
-
-  const res = await fetch("/upload-media", {
-    method: "POST",
-    body: form
-  });
-
-  const d = await res.json();
-
-  if(d.status === "success"){
-    log("🖼️ Image uploaded");
-    return d.id;
-  }else{
-    log("❌ Upload failed → " + d.message);
-    return null;
-  }
-}
-
-// Send message
-async function send(row){
-  try{
-    const payload = {
-      messaging_product: "whatsapp",
-      to: row.phone,
-      type: "template",
-      template: {
-        name: templateEl().value,
-        language: { code: "mr" },
-        components: [
-          {
-            type: "header",
-            parameters: [
-              {
-                type: "image",
-                image: { id: mediaIdGlobal }
-              }
-            ]
-          }
-        ]
+      if (res.ok) {
+        addSuccess();
+      } else {
+        addError(data.error || "Send failed");
       }
-    };
 
-    const res = await fetch("/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: tokenEl().value,
-        phone_id: phoneEl().value,
-        payload
-      })
-    });
-
-    const d = await res.json();
-
-    if(d.status === "error"){
-      log("❌ " + row.phone + " → " + d.message);
-      failed.push(row.phone);
-    } else {
-      log("✅ " + row.phone);
+    } catch (err) {
+      addError(err.message);
     }
-
-  }catch(e){
-    log("❌ " + row.phone + " → Crash");
-    failed.push(row.phone);
   }
 }
-
-// Start
-async function start(){
-  failed = [];
-
-  const file = document.getElementById("csv").files[0];
-
-  if(!file){
-    log("❌ CSV upload kar");
-    return;
-  }
-
-  mediaIdGlobal = await uploadImage();
-
-  const text = await file.text();
-  const data = parseCSV(text);
-
-  log("🚀 Sending started...");
-  log("📊 Total: " + data.length);
-
-  for(let row of data){
-    await send(row);
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  log("🔥 Done");
-  log("❌ Failed: " + failed.length);
-}
-
 </script>
-
-
-<h2>Bulk Dashboard</h2>
-<div style="display:flex;gap:20px;">
-  <div>✅ Success: <span id="successCount">0</span></div>
-  <div>❌ Failed: <span id="failCount">0</span></div>
-</div>
-
-<div style="max-height:250px;overflow-y:auto;border:1px solid #ccc;margin-top:10px;">
-<table id="errorTable" style="width:100%;">
-<thead><tr><th>Time</th><th>Error</th></tr></thead>
-<tbody></tbody>
-</table>
-</div>
-
-<script src="/bulk-dashboard.js"></script>
 
 </body>
 </html>
