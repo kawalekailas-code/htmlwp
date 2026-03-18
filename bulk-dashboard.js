@@ -1,4 +1,3 @@
-
 let successCount = 0;
 let failCount = 0;
 
@@ -11,9 +10,16 @@ function addError(message) {
   failCount++;
   updateStats();
 
-  const table = document.querySelector('#errorTable tbody');
+  const table = document.getElementById('errorTable'); // ✅ FIXED
+
   const row = document.createElement('tr');
-  row.innerHTML = `<td>${new Date().toLocaleTimeString()}</td><td>${message}</td>`;
+  row.innerHTML = `
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td style="word-break:break-word;max-width:250px;color:red;">
+      ${message}
+    </td>
+  `;
+
   table.prepend(row);
 
   if (table.children.length > 50) {
