@@ -2,7 +2,7 @@
 <html>
 <body>
 
-<h2>🔥 WhatsApp PRO SaaS Tool (Image)</h2>
+<h2>🔥 WhatsApp PRO SaaS Tool</h2>
 
 <input id="token" placeholder="Access Token"><br><br>
 <input id="phone_id" placeholder="Phone Number ID"><br><br>
@@ -20,15 +20,21 @@
 
 <button onclick="start()">🚀 Start Campaign</button>
 
-<pre id="log"></pre>
+<h3>📊 Result</h3>
+<div>
+  ✅ Success: <span id="success">0</span><br>
+  ❌ Failed: <span id="failed">0</span>
+</div>
 
 <script>
 
-let failed = [];
+let successCount = 0;
+let failCount = 0;
 let mediaIdGlobal = null;
 
-function log(t){
-  document.getElementById("log").innerHTML += t + "\\n";
+function updateUI(){
+  document.getElementById("success").innerText = successCount;
+  document.getElementById("failed").innerText = failCount;
 }
 
 function tokenEl(){ return document.getElementById("token"); }
@@ -36,44 +42,27 @@ function phoneEl(){ return document.getElementById("phone_id"); }
 function templateEl(){ return document.getElementById("template"); }
 function wabaEl(){ return document.getElementById("waba"); }
 
-// 🔥 FIXED TEMPLATE FETCH
+// TEMPLATE FETCH
 async function loadTemplates(){
-  try{
-    const res = await fetch(`/templates?token=${tokenEl().value}&waba=${wabaEl().value}`);
-    const d = await res.json();
+  const res = await fetch(`/templates?token=${tokenEl().value}&waba=${wabaEl().value}`);
+  const d = await res.json();
 
-    console.log("TEMPLATE:", d);
+  templateEl().innerHTML = "";
 
-    templateEl().innerHTML = "";
+  if(d.status === "error") return;
 
-    if(d.status === "error"){
-      log("❌ " + d.message);
-      return;
-    }
-
-    if(!d.data || d.data.length === 0){
-      log("❌ No templates found");
-      return;
-    }
-
-    d.data.forEach(t=>{
-      let o = document.createElement("option");
-      o.value = t.name;
-      o.text = t.name;
-      templateEl().appendChild(o);
-    });
-
-    log("✅ Templates loaded");
-
-  }catch(e){
-    log("❌ Template fetch crash");
-  }
+  d.data.forEach(t=>{
+    let o = document.createElement("option");
+    o.value = t.name;
+    o.text = t.name;
+    templateEl().appendChild(o);
+  });
 }
 
 // CSV parse
 function parseCSV(text){
   return text
-    .replace(/\r/g, "") // Windows fix
+    .replace(/\r/g, "")
     .split("\n")
     .slice(1)
     .map(x => x.trim())
@@ -84,11 +73,7 @@ function parseCSV(text){
 // Upload image
 async function uploadImage(){
   const file = document.getElementById("image").files[0];
-
-  if(!file){
-    log("❌ Image required");
-    return null;
-  }
+  if(!file) return null;
 
   const form = new FormData();
   form.append("file", file);
@@ -101,17 +86,10 @@ async function uploadImage(){
   });
 
   const d = await res.json();
-
-  if(d.status === "success"){
-    log("🖼️ Image uploaded");
-    return d.id;
-  }else{
-    log("❌ Upload failed → " + d.message);
-    return null;
-  }
+  return d.status === "success" ? d.id : null;
 }
 
-// Send message
+// Send
 async function send(row){
   try{
     const payload = {
@@ -147,45 +125,38 @@ async function send(row){
 
     const d = await res.json();
 
-    if(d.status === "error"){
-      log("❌ " + row.phone + " → " + d.message);
-      failed.push(row.phone);
+    if(d.status === "success"){
+      successCount++;
     } else {
-      log("✅ " + row.phone);
+      failCount++;
     }
 
+    updateUI();
+
   }catch(e){
-    log("❌ " + row.phone + " → Crash");
-    failed.push(row.phone);
+    failCount++;
+    updateUI();
   }
 }
 
 // Start
 async function start(){
-  failed = [];
+  successCount = 0;
+  failCount = 0;
+  updateUI();
 
   const file = document.getElementById("csv").files[0];
-
-  if(!file){
-    log("❌ CSV upload kar");
-    return;
-  }
+  if(!file) return;
 
   mediaIdGlobal = await uploadImage();
 
   const text = await file.text();
   const data = parseCSV(text);
 
-  log("🚀 Sending started...");
-  log("📊 Total: " + data.length);
-
   for(let row of data){
     await send(row);
     await new Promise(r => setTimeout(r, 300));
   }
-
-  log("🔥 Done");
-  log("❌ Failed: " + failed.length);
 }
 
 </script>
