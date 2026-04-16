@@ -13,7 +13,7 @@
 <select id="template"></select><br><br>
 
 <label>Upload Image:</label><br>
-<input type="file" id="image"><br><br>
+<input type="file" id="image" accept="image/*,video/mp4"><br><br>
 
 <label>Upload CSV:</label><br>
 <input type="file" id="csv"><br><br>
@@ -31,6 +31,7 @@
 let successCount = 0;
 let failCount = 0;
 let mediaIdGlobal = null;
+let mediaTypeGlobal = "image"; // 🔥 NEW
 
 function updateUI(){
   document.getElementById("success").innerText = successCount;
@@ -70,10 +71,17 @@ function parseCSV(text){
     .map(x => ({ phone: x }));
 }
 
-// Upload image
+// 🔥 UPDATED: Upload Image/Video
 async function uploadImage(){
   const file = document.getElementById("image").files[0];
   if(!file) return null;
+
+  // detect type
+  if (file.type.startsWith("video/")) {
+    mediaTypeGlobal = "video";
+  } else {
+    mediaTypeGlobal = "image";
+  }
 
   const form = new FormData();
   form.append("file", file);
@@ -89,9 +97,20 @@ async function uploadImage(){
   return d.status === "success" ? d.id : null;
 }
 
-// Send
+// 🔥 UPDATED: Send dynamic media
 async function send(row){
   try{
+
+    let mediaParam = {
+      type: mediaTypeGlobal
+    };
+
+    if(mediaTypeGlobal === "image"){
+      mediaParam.image = { id: mediaIdGlobal };
+    } else {
+      mediaParam.video = { id: mediaIdGlobal };
+    }
+
     const payload = {
       messaging_product: "whatsapp",
       to: row.phone,
@@ -102,12 +121,7 @@ async function send(row){
         components: [
           {
             type: "header",
-            parameters: [
-              {
-                type: "image",
-                image: { id: mediaIdGlobal }
-              }
-            ]
+            parameters: [mediaParam]
           }
         ]
       }
